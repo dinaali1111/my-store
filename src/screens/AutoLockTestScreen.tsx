@@ -1,39 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setLocked } from '../store/authSlice';
-import { useAutoLock } from '../services/autoLock';
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { useAppSelector, useAppDispatch } from "../store/hooks";
+import { setLocked } from "../store/authSlice";
+import { useAutoLock } from "../services/autoLock";
 
 const AutoLockTestScreen: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, isLocked } = useAppSelector(state => state.auth);
+  const { isAuthenticated, isLocked } = useAppSelector((state) => state.auth);
   const { resetTimer, getRemaining } = useAutoLock();
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [testLog, setTestLog] = useState<string[]>([]);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
-    setTestLog(prev => [...prev, `${timestamp}: ${message}`]);
+    setTestLog((prev) => [...prev, `${timestamp}: ${message}`]);
     console.log(`🧪 TEST: ${message}`);
   };
 
   const testAutoLock = () => {
-    addLog('🧪 Starting Auto-lock test');
-    addLog('⏰ Wait 10 seconds without touching screen...');
+    addLog("🧪 Starting Auto-lock test");
+    addLog("⏰ Wait 10 seconds without touching screen...");
     Alert.alert(
-      'Auto-lock Test', 
-      'The app should automatically lock after 10 seconds of inactivity. Watch for the lock screen!\n\nCheck console logs for timer status.',
-      [{ text: 'OK', onPress: () => addLog('📱 Test started - timer should be running') }]
+      "Auto-lock Test",
+      "The app should automatically lock after 10 seconds of inactivity. Watch for the lock screen!\n\nCheck console logs for timer status.",
+      [
+        {
+          text: "OK",
+          onPress: () => addLog("📱 Test started - timer should be running"),
+        },
+      ]
     );
   };
 
   const testManualLock = () => {
-    addLog('🔒 Manually locking app');
+    addLog("🔒 Manually locking app");
     dispatch(setLocked(true));
   };
 
   const testResetTimer = () => {
-    addLog('👆 Resetting inactivity timer');
+    addLog("👆 Resetting inactivity timer");
     resetTimer();
   };
 
@@ -65,14 +70,18 @@ const AutoLockTestScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>🔒 Auto-lock Test Panel</Text>
-      
+
       <View style={styles.statusContainer}>
         <Text style={styles.statusLabel}>Status:</Text>
-        <Text style={[styles.status, isLocked ? styles.locked : styles.unlocked]}>
-          {isLocked ? '🔒 LOCKED' : '🔓 UNLOCKED'}
+        <Text
+          style={[styles.status, isLocked ? styles.locked : styles.unlocked]}
+        >
+          {isLocked ? "🔒 LOCKED" : "🔓 UNLOCKED"}
         </Text>
         {!isLocked && remainingMs !== null && (
-          <Text style={styles.countdown}>⏳ {Math.ceil(remainingMs / 1000)}s</Text>
+          <Text style={styles.countdown}>
+            ⏳ {Math.ceil(remainingMs / 1000)}s
+          </Text>
         )}
       </View>
 
@@ -110,10 +119,16 @@ const AutoLockTestScreen: React.FC = () => {
       <View style={styles.instructions}>
         <Text style={styles.instructionTitle}>📝 Test Instructions:</Text>
         <Text style={styles.instruction}>1. Click "Test Auto-lock (10s)"</Text>
-        <Text style={styles.instruction}>2. Don't touch the screen for 10 seconds</Text>
+        <Text style={styles.instruction}>
+          2. Don't touch the screen for 10 seconds
+        </Text>
         <Text style={styles.instruction}>3. App should lock automatically</Text>
-        <Text style={styles.instruction}>4. Try biometric unlock or password</Text>
-        <Text style={styles.instruction}>5. Test background lock by minimizing app</Text>
+        <Text style={styles.instruction}>
+          4. Try biometric unlock or password
+        </Text>
+        <Text style={styles.instruction}>
+          5. Test background lock by minimizing app
+        </Text>
       </View>
     </View>
   );
@@ -123,114 +138,114 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 20,
-    color: '#333',
+    color: "#333",
   },
   message: {
     fontSize: 16,
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
   },
   statusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
     padding: 15,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
   },
   statusLabel: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginRight: 10,
-    color: '#333',
+    color: "#333",
   },
   status: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   countdown: {
     marginLeft: 12,
     fontSize: 16,
-    color: '#374151',
-    fontWeight: '600',
+    color: "#374151",
+    fontWeight: "600",
   },
   locked: {
-    color: '#dc2626',
+    color: "#dc2626",
   },
   unlocked: {
-    color: '#16a34a',
+    color: "#16a34a",
   },
   buttonContainer: {
     marginBottom: 20,
   },
   testButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   clearButton: {
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
     padding: 10,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   clearButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   logContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 15,
     marginBottom: 20,
   },
   logTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
-    color: '#333',
+    color: "#333",
   },
   noLog: {
-    fontStyle: 'italic',
-    color: '#666',
+    fontStyle: "italic",
+    color: "#666",
   },
   logEntry: {
     fontSize: 12,
-    color: '#333',
+    color: "#333",
     marginBottom: 5,
-    fontFamily: 'monospace',
+    fontFamily: "monospace",
   },
   instructions: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 15,
   },
   instructionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
-    color: '#333',
+    color: "#333",
   },
   instruction: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 5,
   },
 });
