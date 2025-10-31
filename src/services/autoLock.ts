@@ -1,100 +1,110 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setLocked } from '../store/authSlice';
 
 const INACTIVITY_TIMEOUT = 10000; // 10 seconds
 
+// Singleton manager so all callers share the same timer
+const AutoLockManager = (() => {
+  let timer: number | null = null;
+  let startAt: number | null = null;
+
+  const clear = () => {
+    if (timer !== null) {
+      clearTimeout(timer as unknown as number);
+      console.log('⏱ AutoLockManager.clear called (clearing id)', timer);
+      timer = null;
+    }
+  };
+
+  const start = (onLock: () => void) => {
+    clear();
+    startAt = Date.now();
+    console.log('⏰ AutoLockManager.start - scheduling lock in', INACTIVITY_TIMEOUT);
+    const id = setTimeout(() => {
+      console.log('🔒 AutoLockManager.timeout fired');
+      timer = null;
+      startAt = null;
+      onLock();
+    }, INACTIVITY_TIMEOUT) as unknown as number;
+    timer = id;
+    console.log('⏱ AutoLockManager.timer set to', id, 'startAt', startAt);
+  };
+
+  const reset = (onLock: () => void) => {
+    // just start (clears previous)
+    start(onLock);
+  };
+
+  const getRemaining = () => {
+    if (startAt === null) return null;
+    const elapsed = Date.now() - startAt;
+    const rem = INACTIVITY_TIMEOUT - elapsed;
+    return rem > 0 ? rem : 0;
+  };
+
+  return { start, reset, clear, getRemaining };
+})();
+
 export const useAutoLock = () => {
   const dispatch = useAppDispatch();
   const { isAuthenticated, isLocked } = useAppSelector(state => state.auth);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const appStateRef = useRef(AppState.currentState);
 
-  // Clear existing timer
-  const clearTimer = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  };
+  const handleLock = useCallback(() => {
+    console.log('🔐 useAutoLock.handleLock -> dispatching setLocked(true)');
+    dispatch(setLocked(true));
+  }, [dispatch]);
 
-  // Start auto-lock timer
-  const startTimer = () => {
-    // Only start if authenticated and not locked
+  const resetTimer = useCallback(() => {
+    console.log('👆 useAutoLock.resetTimer called - isAuthenticated:', isAuthenticated, 'isLocked:', isLocked);
     if (!isAuthenticated || isLocked) {
-      console.log('❌ Cannot start timer - authenticated:', isAuthenticated, 'locked:', isLocked);
+      console.log('⛔ useAutoLock.resetTimer ignored - not authenticated or already locked');
       return;
     }
+    AutoLockManager.reset(handleLock);
+  }, [isAuthenticated, isLocked, handleLock]);
 
-    // Clear any existing timer
-    clearTimer();
+  const clearTimer = useCallback(() => {
+    AutoLockManager.clear();
+  }, []);
 
-    console.log('⏰ Starting 10-second auto-lock timer');
-    
-    timerRef.current = setTimeout(() => {
-      console.log('🔒 Auto-locking after 10 seconds of inactivity');
-      dispatch(setLocked(true));
-    }, INACTIVITY_TIMEOUT);
-  };
-
-  // Reset timer (called on user activity)
-  const resetTimer = () => {
-    if (!isAuthenticated || isLocked) {
-      return;
-    }
-    
-    console.log('👆 User activity detected - restarting timer');
-    startTimer(); // This will clear old timer and start new one
-  };
-
-  // Handle app state changes
-  const handleAppStateChange = (nextAppState: AppStateStatus) => {
-    console.log('📱 App state changed:', appStateRef.current, '→', nextAppState);
-    
-    if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
-      // App coming to foreground - lock it
-      if (isAuthenticated) {
-        console.log('🔒 App came to foreground - locking for security');
-        dispatch(setLocked(true));
-      }
-    } else if (nextAppState.match(/inactive|background/)) {
-      // App going to background - clear timer
-      console.log('📱 App going to background - clearing timer');
-      clearTimer();
-    }
-    
-    appStateRef.current = nextAppState;
-  };
-
-  // Start timer when authenticated and unlocked
   useEffect(() => {
-    console.log('🔄 Auth state changed - authenticated:', isAuthenticated, 'locked:', isLocked);
-    
+    console.log('� useAutoLock effect - authenticated:', isAuthenticated, 'locked:', isLocked);
     if (isAuthenticated && !isLocked) {
-      console.log('🚀 Starting auto-lock system');
-      startTimer();
+      AutoLockManager.start(handleLock);
     } else {
-      console.log('🛑 Stopping auto-lock system');
-      clearTimer();
+      AutoLockManager.clear();
     }
-
     return () => {
-      clearTimer();
+      AutoLockManager.clear();
     };
-  }, [isAuthenticated, isLocked]);
+  }, [isAuthenticated, isLocked, handleLock]);
 
-  // Listen to app state changes
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    
-    return () => {
-      subscription?.remove();
-      clearTimer();
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      console.log('� useAutoLock AppState change:', nextAppState);
+      if (nextAppState.match(/inactive|background/)) {
+        if (isAuthenticated) {
+          console.log('� App going to background - locking via AppState handler');
+          dispatch(setLocked(true));
+        }
+        AutoLockManager.clear();
+      }
     };
-  }, [isAuthenticated]);
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [dispatch, isAuthenticated]);
 
-  return {
-    resetTimer,
-  };
+  const getRemaining = useCallback(() => {
+    // expose manager remaining ms
+    try {
+      // @ts-ignore access internal function
+      return (AutoLockManager as any).getRemaining();
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
+  return { resetTimer, clearTimer, getRemaining };
 };

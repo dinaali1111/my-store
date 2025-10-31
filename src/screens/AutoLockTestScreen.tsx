@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setLocked } from '../store/authSlice';
@@ -7,7 +7,8 @@ import { useAutoLock } from '../services/autoLock';
 const AutoLockTestScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isAuthenticated, isLocked } = useAppSelector(state => state.auth);
-  const { resetTimer } = useAutoLock();
+  const { resetTimer, getRemaining } = useAutoLock();
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [testLog, setTestLog] = useState<string[]>([]);
 
   const addLog = (message: string) => {
@@ -36,6 +37,18 @@ const AutoLockTestScreen: React.FC = () => {
     resetTimer();
   };
 
+  useEffect(() => {
+    const t = setInterval(() => {
+      try {
+        const r = getRemaining ? getRemaining() : null;
+        setRemainingMs(r);
+      } catch (e) {
+        setRemainingMs(null);
+      }
+    }, 200);
+    return () => clearInterval(t);
+  }, [getRemaining]);
+
   const clearLog = () => {
     setTestLog([]);
   };
@@ -58,6 +71,9 @@ const AutoLockTestScreen: React.FC = () => {
         <Text style={[styles.status, isLocked ? styles.locked : styles.unlocked]}>
           {isLocked ? '🔒 LOCKED' : '🔓 UNLOCKED'}
         </Text>
+        {!isLocked && remainingMs !== null && (
+          <Text style={styles.countdown}>⏳ {Math.ceil(remainingMs / 1000)}s</Text>
+        )}
       </View>
 
       <View style={styles.buttonContainer}>
@@ -139,6 +155,12 @@ const styles = StyleSheet.create({
   status: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  countdown: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '600',
   },
   locked: {
     color: '#dc2626',
